@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+  ispu:
+    build: .
+    container_name: api_ispu
+    network_mode: "host"
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    restart: always
