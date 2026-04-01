@@ -1,4 +1,7 @@
 #!/bin/bash
+
+mkdir logs
+chmod -R 777 logs
 # Build image  tanpa cache
 docker-compose build --no-cache ispu
 
