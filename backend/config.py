@@ -44,7 +44,7 @@ def check_duplicate_data(datetime, device, parameter):
         conn = mysql.connector.connect(**MYSQL_CONFIG)
         cursor = conn.cursor()
         
-        # Cek di tabel tmp dan data
+        # Cek di tbl_data
         query = f"""
                 SELECT COUNT(*) FROM tbl_data
                 WHERE recorded_at = %s AND device_id = %s AND parameter_name = %s
@@ -59,41 +59,66 @@ def check_duplicate_data(datetime, device, parameter):
     except Exception as e:
         write_log(f"Gagal mengecek duplicate data: {e}")
         return False
+    finally:
+        if 'cursor' in locals(): cursor.close()
+        if 'conn' in locals(): conn.close()
 
-
-def insert_data(datetime,timestamp,device_id,parameter,value):
-    # Simpan data ke database dengan tambahan kolom created_at dan updated_at
+def insert_data(datetime_val, timestamp_val, device_id, parameter, value):
+    """
+    Insert data sensor ke tbl_data (history) dan update tbl_latest_data (snapshot terbaru)
+    """
+    # Kolom created_at dan updated_at
     create_at = dt.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
     update_at = create_at
-    # Cek apakah data dengan device dan date yang sama sudah ada
-    if check_duplicate_data(datetime, device_id, parameter):
-        write_log(f"Data dengan device '{device_id}' datetime '{datetime}' parameter '{parameter}' sudah ada di database. Tidak Disimpan.")
+
+    # ===== STEP 1: Cek duplikat di tbl_data =====
+    if check_duplicate_data(datetime_val, device_id, parameter):
+        write_log(f"Data dengan device '{device_id}' datetime '{datetime_val}' parameter '{parameter}' sudah ada di database. Tidak Disimpan.")
         return False
-    
-    query = """
+
+    # ===== STEP 2: Insert ke tbl_data =====
+    insert_query = """
         INSERT INTO tbl_data (recorded_at, timestamp, device_id, parameter_name, value, created_at, updated_at)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
     """
-        
+
+    # ===== STEP 3: Upsert ke tbl_latest_data =====
+    # tbl_latest_data memiliki primary key (device_id, parameter_name)
+    latest_query = """
+        INSERT INTO tbl_latest_data (device_id, parameter_name, value, recorded_at, timestamp, created_at, updated_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+            value = VALUES(value),
+            recorded_at = VALUES(recorded_at),
+            timestamp = VALUES(timestamp),
+            updated_at = VALUES(updated_at)
+    """
+
     try:
         MYSQL_CONFIG = mysqlConfig()
         conn = mysql.connector.connect(**MYSQL_CONFIG)
         cursor = conn.cursor()
 
-        values = (
-            datetime, timestamp, device_id, parameter, value, create_at, update_at
+        # Insert ke tbl_data
+        values_data = (
+            datetime_val, timestamp_val, device_id, parameter, value, create_at, update_at
         )
-        
-        cursor.execute(query, values)
-        conn.commit()
+        cursor.execute(insert_query, values_data)
 
-        write_log(f"Data berhasil disimpan kedatabase: device='{device_id}', datetime='{datetime}', parameter='{parameter}', value='{value}'")
+        # Upsert ke tbl_latest_data
+        values_latest = (
+            device_id, parameter, value, datetime_val, timestamp_val, create_at, update_at
+        )
+        cursor.execute(latest_query, values_latest)
+
+        conn.commit()
+        write_log(f"Data berhasil disimpan: device='{device_id}', datetime='{datetime_val}', parameter='{parameter}', value='{value}'")
         return True
-        
+
     except Exception as e:
         write_log(f"Gagal memasukkan data ke database: {e}")
         return False
-        
+
     finally:
         # Tutup koneksi
         if 'cursor' in locals(): cursor.close()
