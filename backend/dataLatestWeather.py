@@ -128,8 +128,8 @@ def latestWeather():
                     # Insert ke database
                     try:
                         result = insert_data(
-                            datetime=datetime_str,
-                            timestamp=timestamp,
+                            datetime_val=datetime_str,
+                            timestamp_val=timestamp,
                             device_id=device_id,
                             parameter=param_name,
                             value=param_value
