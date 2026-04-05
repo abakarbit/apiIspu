@@ -29,21 +29,41 @@ def delete_log():
     else:
         write_log("Log file tidak ditemukan, tidak bisa dibersihkan.")
 
-def scheduler():
-    write_log("Service aktif. Menunggu jadwal pengambiland dari API...")
 
+def scheduler(interval_minutes=5,seconds=4):
+    """
+    Scheduler fleksibel:
+    - interval_minutes: eksekusi setiap kelipatan menit tertentu
+    - selalu mengeksekusi pada detik ke-4
+    """
+    interval_minutes = minutes
+    interval_seconds = seconds 
+    write_log(f"Service aktif. Menunggu jadwal setiap {interval_minutes} menit...")
+    
     try:
         while True:
             now = datetime.now()
             delete_log()
-    
-            # Tentukan target waktu: 4 menit berikutnya detik 4
-            next_run = (now.replace(second=0, microsecond=0) + timedelta(minutes=4)).replace(second=4)
+
+            # Tentukan kelipatan berikutnya
+            next_minute = ((now.minute // interval_minutes + 1) * interval_minutes) % 60
+            hour_increment = (now.minute // interval_minutes + 1) * interval_minutes // 60
+
+            next_run = now.replace(
+                hour=(now.hour + hour_increment) % 24,
+                minute=next_minute,
+                second=interval_seconds,
+                microsecond=0
+            )
 
             # Hitung waktu tidur
             sleep_seconds = (next_run - now).total_seconds()
-            if sleep_seconds > 0:
-                time.sleep(sleep_seconds)
+            if sleep_seconds < 0:
+                # jika kebetulan sekarang lebih dari target, langsung ke interval berikutnya
+                next_run += timedelta(minutes=interval_minutes)
+                sleep_seconds = (next_run - now).total_seconds()
+
+            time.sleep(sleep_seconds)
 
             # Jalankan task
             try:
