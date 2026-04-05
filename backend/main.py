@@ -37,8 +37,8 @@ def scheduler():
             now = datetime.now()
             delete_log()
     
-            # Tentukan target waktu: menit berikutnya detik 4
-            next_run = (now.replace(second=0, microsecond=0) + timedelta(minutes=1)).replace(second=4)
+            # Tentukan target waktu: 4 menit berikutnya detik 4
+            next_run = (now.replace(second=0, microsecond=0) + timedelta(minutes=4)).replace(second=4)
 
             # Hitung waktu tidur
             sleep_seconds = (next_run - now).total_seconds()
