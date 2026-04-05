@@ -30,16 +30,14 @@ def delete_log():
         write_log("Log file tidak ditemukan, tidak bisa dibersihkan.")
 
 
-def scheduler(interval_minutes=5,seconds=4):
+def scheduler(interval_minutes=5, second=4):
     """
     Scheduler fleksibel:
     - interval_minutes: eksekusi setiap kelipatan menit tertentu
-    - selalu mengeksekusi pada detik ke-4
+    - selalu mengeksekusi pada detik tertentu (default detik ke-4)
     """
-    interval_minutes = minutes
-    interval_seconds = seconds 
-    write_log(f"Service aktif. Menunggu jadwal setiap {interval_minutes} menit...")
-    
+    write_log(f"Service aktif. Menunggu jadwal setiap {interval_minutes} menit, detik ke-{second}...")
+
     try:
         while True:
             now = datetime.now()
@@ -47,19 +45,19 @@ def scheduler(interval_minutes=5,seconds=4):
 
             # Tentukan kelipatan berikutnya
             next_minute = ((now.minute // interval_minutes + 1) * interval_minutes) % 60
-            hour_increment = (now.minute // interval_minutes + 1) * interval_minutes // 60
+            hour_increment = ((now.minute // interval_minutes + 1) * interval_minutes) // 60
 
             next_run = now.replace(
                 hour=(now.hour + hour_increment) % 24,
                 minute=next_minute,
-                second=interval_seconds,
+                second=second,
                 microsecond=0
             )
 
             # Hitung waktu tidur
             sleep_seconds = (next_run - now).total_seconds()
             if sleep_seconds < 0:
-                # jika kebetulan sekarang lebih dari target, langsung ke interval berikutnya
+                # jika sudah lewat target, langsung ke interval berikutnya
                 next_run += timedelta(minutes=interval_minutes)
                 sleep_seconds = (next_run - now).total_seconds()
 
@@ -80,6 +78,7 @@ def scheduler(interval_minutes=5,seconds=4):
 
     except KeyboardInterrupt:
         write_log("Service dihentikan manual.")
+
 
 if __name__ == "__main__":
     scheduler()
